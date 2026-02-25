@@ -1,6 +1,5 @@
 import RNS
 from pathlib import Path
-import time
 
 serve_path = Path("./files")
 configpath = Path("./config")
@@ -34,7 +33,7 @@ def main():
     server_loop(server_destination)
 
 
-def client_connected(link):
+def client_connected(link: RNS.Link):
     link.set_packet_callback(client_request)
 
 
@@ -42,9 +41,8 @@ def client_request(message: bytes, packet):
     try:
         filename = message.decode("utf-8")
         with open(serve_path.joinpath(filename), "rb") as data_file:
-            resource = RNS.Resource(data_file, packet.link, metadata=filename)
-            # keep the file larger than 1MB open for RNS.Resource, or ValueError: seek of closed file
-            time.sleep(0.2)
+            content = data_file.read()
+            resource = RNS.Resource(content, packet.link, metadata=filename)
     except Exception as e:
         RNS.log('Error while reading file "' + filename + '"', RNS.LOG_ERROR)
         packet.link.teardown()
