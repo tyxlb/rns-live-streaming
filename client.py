@@ -56,7 +56,13 @@ def get_link(destination_hexhash):
 
 
 def link_closed(link: RNS.Link):
-    links.pop(str(link)[1:-1])
+    if link.teardown_reason == RNS.Link.TIMEOUT:
+        RNS.log("The link timed out, exiting now")
+    elif link.teardown_reason == RNS.Link.DESTINATION_CLOSED:
+        RNS.log("The link was closed by the server, exiting now")
+    else:
+        RNS.log("Link closed, exiting now")
+    links.pop(RNS.prettyhexrep(link.destination.hash)[1:-1])
 
 
 @app.get("/{destination_hexhash}/files/{file_path:path}")
@@ -65,9 +71,11 @@ def read_file(destination_hexhash: str, file_path: str):
     datas[str(link)][file_path] = None
     request_packet = RNS.Packet(link, file_path.encode("utf-8"), create_receipt=False)
     request_packet.send()
-    while datas[str(link)][file_path] is None:
+    while datas[str(link)][file_path] is None and link.status == RNS.Link.ACTIVE:
         time.sleep(0.1)
 
+    if link.status != RNS.Link.ACTIVE:
+        return HTTPException(500, "Link closed")
     return datas[str(link)][file_path]
 
 
