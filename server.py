@@ -27,6 +27,9 @@ def main():
         "live",
         "stream",
     )
+    server_destination.register_request_handler(
+        "/files", response_generator=files_generator, allow=RNS.Destination.ALLOW_ALL
+    )
     server_destination.set_link_established_callback(client_connected)
     RNS.log(f"Address: {RNS.prettyhexrep(server_destination.hash)}", RNS.LOG_INFO)
 
@@ -34,19 +37,21 @@ def main():
 
 
 def client_connected(link: RNS.Link):
-    link.set_packet_callback(client_request)
+    pass
 
 
-def client_request(message: bytes, packet):
+def files_generator(path, data, request_id, link_id, remote_identity, requested_at):
     try:
-        filename = message.decode("utf-8")
+        filename = data.decode("utf-8")
         with open(serve_path.joinpath(filename), "rb") as data_file:
             content = data_file.read()
-            resource = RNS.Resource(content, packet.link, metadata=filename)
+            return content
     except Exception as e:
-        RNS.log('Error while reading file "' + filename + '"', RNS.LOG_ERROR)
-        packet.link.teardown()
-        raise e
+        RNS.log(
+            f"Error while generating response to request {RNS.prettyhexrep(request_id)} on link {RNS.prettyhexrep(link_id)}, {e}",
+            RNS.LOG_ERROR,
+        )
+        return b""
 
 
 def server_loop(destination):
