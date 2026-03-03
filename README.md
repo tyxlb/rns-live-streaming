@@ -21,6 +21,10 @@ for example:
 ```
 ffmpeg -i input.mp4 -hls_playlist_type 2 output.m3u8
 ```
+I suggest including the name, title, and .m3u8 file in the announcement, for example:
+```
+python .\server.py --name NAME --title TITLE --hls index.m3u8
+```
 ### client:
 ```
 python .\client.py
@@ -31,8 +35,10 @@ for example:
 ```
 ffplay http://127.0.0.1:8000/{your_server_destination}/files/output.m3u8
 ```
+You can also keep the client open and listen to announcements on the network. http://127.0.0.1:8000/ will return a dictionary containing known destinations (and .m3u8 files).
 ## working principle
 This project uses HLS as the streaming media protocol. The client is actually an HTTP gateway.
 ## reference
 https://reticulum.network/manual/examples.html
+
 https://github.com/markqvist/Reticulum/discussions/295
