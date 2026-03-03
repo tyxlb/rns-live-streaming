@@ -1,4 +1,5 @@
 import RNS
+import RNS.vendor.umsgpack as msgpack
 import time
 from fastapi import FastAPI, Response, HTTPException
 import uvicorn
@@ -18,6 +19,31 @@ class client:
             return Response(file.get_response())
 
         self.links: dict[str, RNS.Link] = {}
+        self.announces_dict = {}
+
+        class AnnounceHandler:
+            def __init__(self2):
+                self2.aspect_filter = "live.stream"
+
+            def received_announce(
+                self2, destination_hash, announced_identity, app_data
+            ):
+                RNS.log(
+                    "Received an announce from " + RNS.prettyhexrep(destination_hash)
+                )
+                destination_hash = RNS.prettyhexrep(destination_hash)[1:-1]
+                if app_data is not None:
+                    self.announces_dict[destination_hash] = msgpack.unpackb(app_data)
+                else:
+                    self.announces_dict[destination_hash] = {}
+
+        announce_handler = AnnounceHandler()
+        RNS.Transport.register_announce_handler(announce_handler)
+
+        @self.app.get("/")
+        def get_list():
+            return self.announces_dict
+
         uvicorn.run(self.app)
 
     def get_link(self, destination_hexhash):

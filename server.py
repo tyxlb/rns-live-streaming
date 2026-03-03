@@ -1,9 +1,18 @@
 import RNS
+import RNS.vendor.umsgpack as msgpack
 from pathlib import Path
+import time
 
 
 class server:
-    def __init__(self, filespath="./files", configpath="./config"):
+    def __init__(
+        self,
+        name=None,
+        title=None,
+        hls=None,
+        filespath="./files",
+        configpath="./config",
+    ):
         self.filespath = Path(filespath)
         self.configpath = Path(configpath)
         self.identitypath = self.configpath.joinpath("/identity")
@@ -35,6 +44,17 @@ class server:
         self.destination.set_link_established_callback(self.client_connected)
         RNS.log(f"Address: {RNS.prettyhexrep(self.destination.hash)}", RNS.LOG_INFO)
 
+        self.app_data = {}
+        if name is not None:
+            self.app_data["name"] = name
+        if title is not None:
+            self.app_data["title"] = title
+        if hls is not None:
+            self.app_data["hls"] = hls
+        if self.app_data != {}:
+            self.destination.set_default_app_data(msgpack.packb(self.app_data))
+
+        self.announce_interval = 20
         self.server_loop()
 
     def client_connected(self, link: RNS.Link):
@@ -55,13 +75,33 @@ class server:
             )
             return b""
 
+    def announce(self):
+        self.destination.announce()
+        RNS.log("Sent announce from " + RNS.prettyhexrep(self.destination.hash))
+        RNS.log(f"Active links: {len(self.destination.links)}")
+
     def server_loop(self):
-        RNS.log("Hit enter to manually send an announce (Ctrl-C to quit)")
         while True:
-            entered = input()
-            self.destination.announce()
-            RNS.log("Sent announce from " + RNS.prettyhexrep(self.destination.hash))
+            self.announce()
+            time.sleep(self.announce_interval * 60)
 
 
 if __name__ == "__main__":
-    server()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="rns live streaming")
+    parser.add_argument("--name")
+    parser.add_argument("--title")
+    parser.add_argument("--hls", help="your .m3u8 file in the /files")
+    parser.add_argument("--files", default="./files")
+    parser.add_argument("--config", default="./config")
+
+    args = parser.parse_args()
+
+    server = server(
+        name=args.name,
+        title=args.title,
+        hls=args.hls,
+        filespath=args.files,
+        configpath=args.config,
+    )
