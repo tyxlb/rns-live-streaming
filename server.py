@@ -2,6 +2,7 @@ import RNS
 import RNS.vendor.umsgpack as msgpack
 from pathlib import Path
 import time
+import urllib.request
 
 
 class server:
@@ -10,13 +11,12 @@ class server:
         name=None,
         title=None,
         hls=None,
-        filespath="./files",
+        streampath="http://localhost:8888",
         configpath="./config",
     ):
-        self.filespath = Path(filespath)
+        self.streampath = streampath
         self.configpath = Path(configpath)
         self.identitypath = self.configpath.joinpath("/identity")
-        self.filespath.mkdir(parents=True, exist_ok=True)
         self.configpath.mkdir(parents=True, exist_ok=True)
 
         RNS.Reticulum()
@@ -65,9 +65,10 @@ class server:
     ):
         try:
             filename = data.decode("utf-8")
-            with open(self.filespath.joinpath(filename), "rb") as data_file:
-                content = data_file.read()
-                return content
+            url = f"{self.streampath}/{filename}"
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req) as response:
+                return response.read()
         except Exception as e:
             RNS.log(
                 f"Error while generating response to request {RNS.prettyhexrep(request_id)} on link {RNS.prettyhexrep(link_id)}, {e}",
@@ -92,8 +93,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="rns live streaming")
     parser.add_argument("--name")
     parser.add_argument("--title")
-    parser.add_argument("--hls", help="your .m3u8 file in the /files")
-    parser.add_argument("--files", default="./files")
+    parser.add_argument("--hls", default="mystream/index.m3u8")
+    parser.add_argument("--streampath", default="http://localhost:8888")
     parser.add_argument("--config", default="./config")
 
     args = parser.parse_args()
@@ -102,6 +103,6 @@ if __name__ == "__main__":
         name=args.name,
         title=args.title,
         hls=args.hls,
-        filespath=args.files,
+        streampath=args.streampath,
         configpath=args.config,
     )
